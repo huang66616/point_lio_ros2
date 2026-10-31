@@ -113,17 +113,31 @@ public:
 
     public:
         MANUAL_HEAP(int max_capacity = 100)
-
         {
             cap = max_capacity;
-            heap = new PointType_CMP[max_capacity];
             heap_size = 0;
+
+            if (max_capacity <= INLINE_CAPACITY)
+            {
+                // Small heaps use internal storage and avoid new[].
+                heap = inline_heap;
+            }
+            else
+            {
+                heap = new PointType_CMP[max_capacity];
+                owns_heap = true;
+            }
         }
 
         ~MANUAL_HEAP()
         {
-            delete[] heap;
+            if (owns_heap)
+                delete[] heap;
         }
+
+        // The heap owns its storage and must not be shallow-copied.
+        MANUAL_HEAP(const MANUAL_HEAP &) = delete;
+        MANUAL_HEAP &operator=(const MANUAL_HEAP &) = delete;
         void pop()
         {
             if (heap_size == 0)
@@ -157,7 +171,11 @@ public:
         }
 
     private:
-        PointType_CMP *heap;
+        static constexpr int INLINE_CAPACITY = 5;
+        PointType_CMP inline_heap[INLINE_CAPACITY];
+        PointType_CMP *heap = nullptr;
+        bool owns_heap = false;
+
         void MoveDown(int heap_index)
         {
             int l = heap_index * 2 + 1;

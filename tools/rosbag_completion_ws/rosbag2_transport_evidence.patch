@@ -1,0 +1,608 @@
+diff --git a/rosbag2_transport/CMakeLists.txt b/rosbag2_transport/CMakeLists.txt
+index b325dd2..baa67ad 100644
+--- a/rosbag2_transport/CMakeLists.txt
++++ b/rosbag2_transport/CMakeLists.txt
+@@ -44,6 +44,10 @@ add_library(${PROJECT_NAME} SHARED
+   src/rosbag2_transport/recorder.cpp
+   src/rosbag2_transport/record_options.cpp
+   src/rosbag2_transport/topic_filter.cpp)
++add_executable(verified_rosbag_play src/rosbag2_transport/verified_play.cpp)
++target_link_libraries(verified_rosbag_play ${PROJECT_NAME})
++ament_target_dependencies(verified_rosbag_play rclcpp rosbag2_cpp rosbag2_storage)
++install(TARGETS verified_rosbag_play DESTINATION lib/${PROJECT_NAME})
+ target_include_directories(${PROJECT_NAME} PUBLIC
+   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+   $<INSTALL_INTERFACE:include/${PROJECT_NAME}>)
+diff --git a/rosbag2_transport/include/rosbag2_transport/player.hpp b/rosbag2_transport/include/rosbag2_transport/player.hpp
+index 47673e5..204f213 100644
+--- a/rosbag2_transport/include/rosbag2_transport/player.hpp
++++ b/rosbag2_transport/include/rosbag2_transport/player.hpp
+@@ -16,6 +16,8 @@
+ #define ROSBAG2_TRANSPORT__PLAYER_HPP_
+ 
+ #include <chrono>
++#include <atomic>
++#include <cstdint>
+ #include <functional>
+ #include <future>
+ #include <memory>
+@@ -59,6 +61,24 @@ class Reader;
+ 
+ namespace rosbag2_transport
+ {
++struct PlaybackEvidence
++{
++  bool reader_eof = false;
++  bool reader_thread_finished = false;
++  bool queue_drained = false;
++  bool interrupted = false;
++  bool runtime_error = false;
++  uint64_t read_count = 0;
++  uint64_t enqueue_success = 0;
++  uint64_t enqueue_failure = 0;
++  uint64_t pop_success = 0;
++  uint64_t pop_failure = 0;
++  uint64_t publish_success = 0;
++  uint64_t publish_failure = 0;
++  uint64_t control_changes = 0;
++  std::vector<std::string> errors;
++};
++
+ class Player : public rclcpp::Node
+ {
+ public:
+@@ -97,6 +117,11 @@ public:
+   ROSBAG2_TRANSPORT_PUBLIC
+   void play();
+ 
++  ROSBAG2_TRANSPORT_PUBLIC
++  PlaybackEvidence completion_evidence() const;
++  ROSBAG2_TRANSPORT_PUBLIC
++  void mark_interrupted();
++
+   // Playback control interface
+   /// Pause the flow of time for playback.
+   ROSBAG2_TRANSPORT_PUBLIC
+@@ -194,6 +219,26 @@ private:
+   std::unordered_map<std::string, std::shared_ptr<PlayerPublisher>> publishers_;
+ 
+ private:
++  void record_error(const std::string & message);
++  void load_storage_content_tracked();
++  mutable std::mutex evidence_mutex_;
++  std::vector<std::string> evidence_errors_;
++  std::atomic_bool reader_eof_{false};
++  std::atomic_bool reader_thread_finished_{false};
++  std::atomic_bool queue_drained_{false};
++  std::atomic_bool interrupted_{false};
++  std::atomic_bool runtime_error_{false};
++  std::atomic_bool play_started_{false};
++  std::atomic<uint64_t> read_count_{0};
++  std::atomic<uint64_t> enqueue_success_{0};
++  std::atomic<uint64_t> enqueue_failure_{0};
++  std::atomic<uint64_t> pop_success_{0};
++  std::atomic<uint64_t> pop_failure_{0};
++  std::atomic<uint64_t> publish_success_{0};
++  std::atomic<uint64_t> publish_failure_{0};
++  std::atomic<uint64_t> control_changes_{0};
++  bool test_read_failure_ = false;
++  bool test_publish_failure_ = false;
+   rosbag2_storage::SerializedBagMessageSharedPtr peek_next_message_from_queue();
+   void load_storage_content();
+   bool is_storage_completely_loaded() const;
+diff --git a/rosbag2_transport/src/rosbag2_transport/player.cpp b/rosbag2_transport/src/rosbag2_transport/player.cpp
+index c8e9e5f..dfe6ae1 100644
+--- a/rosbag2_transport/src/rosbag2_transport/player.cpp
++++ b/rosbag2_transport/src/rosbag2_transport/player.cpp
+@@ -16,6 +16,8 @@
+ 
+ #include <algorithm>
+ #include <chrono>
++#include <cstdlib>
++#include <iostream>
+ #include <memory>
+ #include <queue>
+ #include <string>
+@@ -167,6 +169,11 @@ Player::Player(
+   }
+   create_control_services();
+   add_keyboard_callbacks();
++  const char * fault = std::getenv("ROSBAG_EVIDENCE_TEST_FAULT");
++  if (fault != nullptr) {
++    test_read_failure_ = std::string(fault) == "read";
++    test_publish_failure_ = std::string(fault) == "publish";
++  }
+ }
+ 
+ Player::~Player()
+@@ -186,6 +193,55 @@ Player::~Player()
+ const std::chrono::milliseconds
+ Player::queue_read_wait_period_ = std::chrono::milliseconds(100);
+ 
++void Player::record_error(const std::string & message)
++{
++  runtime_error_.store(true);
++  std::lock_guard<std::mutex> lock(evidence_mutex_);
++  evidence_errors_.push_back(message);
++}
++
++void Player::mark_interrupted()
++{
++  interrupted_.store(true);
++}
++
++PlaybackEvidence Player::completion_evidence() const
++{
++  PlaybackEvidence result;
++  result.reader_eof = reader_eof_.load();
++  result.reader_thread_finished = reader_thread_finished_.load();
++  result.queue_drained = queue_drained_.load();
++  result.interrupted = interrupted_.load();
++  result.runtime_error = runtime_error_.load();
++  result.read_count = read_count_.load();
++  result.enqueue_success = enqueue_success_.load();
++  result.enqueue_failure = enqueue_failure_.load();
++  result.pop_success = pop_success_.load();
++  result.pop_failure = pop_failure_.load();
++  result.publish_success = publish_success_.load();
++  result.publish_failure = publish_failure_.load();
++  result.control_changes = control_changes_.load();
++  std::lock_guard<std::mutex> lock(evidence_mutex_);
++  result.errors = evidence_errors_;
++  return result;
++}
++
++void Player::load_storage_content_tracked()
++{
++  try {
++    load_storage_content();
++  } catch (const std::exception & e) {
++    record_error(std::string("reader: ") + e.what());
++    reader_thread_finished_.store(true);
++    throw;
++  } catch (...) {
++    record_error("reader: unknown exception");
++    reader_thread_finished_.store(true);
++    throw;
++  }
++  reader_thread_finished_.store(true);
++}
++
+ bool Player::is_storage_completely_loaded() const
+ {
+   if (storage_loading_future_.valid() &&
+@@ -198,6 +254,7 @@ bool Player::is_storage_completely_loaded() const
+ 
+ void Player::play()
+ {
++  play_started_.store(true);
+   rclcpp::Duration delay(0, 0);
+   if (play_options_.delay >= rclcpp::Duration(0, 0)) {
+     delay = play_options_.delay;
+@@ -219,7 +276,8 @@ void Player::play()
+         reader_->seek(starting_time_);
+         clock_->jump(starting_time_);
+       }
+-      storage_loading_future_ = std::async(std::launch::async, [this]() {load_storage_content();});
++      storage_loading_future_ = std::async(
++        std::launch::async, [this]() {load_storage_content_tracked();});
+       wait_for_filled_queue();
+       play_messages_from_queue();
+       {
+@@ -229,7 +287,24 @@ void Player::play()
+       }
+     } while (rclcpp::ok() && play_options_.loop);
+   } catch (std::runtime_error & e) {
++    record_error(std::string("play: ") + e.what());
+     RCLCPP_ERROR(get_logger(), "Failed to play: %s", e.what());
++  } catch (const std::exception & e) {
++    record_error(std::string("play: ") + e.what());
++  } catch (...) {
++    record_error("play: unknown exception");
++  }
++  try {
++    if (storage_loading_future_.valid()) {
++      storage_loading_future_.get();
++    }
++  } catch (const std::exception & e) {
++    record_error(std::string("reader future: ") + e.what());
++  } catch (...) {
++    record_error("reader future: unknown exception");
++  }
++  if (!rclcpp::ok()) {
++    mark_interrupted();
+   }
+   std::lock_guard<std::mutex> lk(ready_to_play_from_queue_mutex_);
+   is_ready_to_play_from_queue_ = false;
+@@ -244,12 +319,14 @@ void Player::play()
+     for (auto pub : publishers_) {
+       try {
+         if (!pub.second->generic_publisher()->wait_for_all_acked(timeout)) {
++          record_error("ack timeout: " + pub.first);
+           RCLCPP_ERROR(
+             get_logger(),
+             "Timed out while waiting for all published messages to be acknowledged for topic %s",
+             pub.first.c_str());
+         }
+       } catch (std::exception & e) {
++        record_error("ack exception: " + pub.first + ": " + e.what());
+         RCLCPP_ERROR(
+           get_logger(),
+           "Exception occurred while waiting for all published messages to be acknowledged for "
+@@ -263,12 +340,14 @@ void Player::play()
+ 
+ void Player::pause()
+ {
++  ++control_changes_;
+   clock_->pause();
+   RCLCPP_INFO_STREAM(get_logger(), "Pausing play.");
+ }
+ 
+ void Player::resume()
+ {
++  ++control_changes_;
+   clock_->resume();
+   RCLCPP_INFO_STREAM(get_logger(), "Resuming play.");
+ }
+@@ -290,6 +369,9 @@ double Player::get_rate() const
+ 
+ bool Player::set_rate(double rate)
+ {
++  if (play_started_.load()) {
++    ++control_changes_;
++  }
+   bool ok = clock_->set_rate(rate);
+   if (ok) {
+     RCLCPP_INFO_STREAM(get_logger(), "Set rate to " << rate);
+@@ -328,6 +410,7 @@ rosbag2_storage::SerializedBagMessageSharedPtr Player::peek_next_message_from_qu
+ 
+ bool Player::play_next()
+ {
++  ++control_changes_;
+   if (!clock_->is_paused()) {
+     RCLCPP_WARN_STREAM(get_logger(), "Called play next, but not in paused state.");
+     return false;
+@@ -353,7 +436,12 @@ bool Player::play_next()
+       next_message_published = publish_message(message_ptr);
+       clock_->jump(message_ptr->time_stamp);
+     }
+-    message_queue_.pop();
++    if (message_queue_.pop()) {
++      ++pop_success_;
++    } else {
++      ++pop_failure_;
++      record_error("queue pop failed in play_next");
++    }
+     message_ptr = peek_next_message_from_queue();
+   }
+   return next_message_published;
+@@ -376,6 +464,7 @@ size_t Player::burst(const size_t num_messages)
+ 
+ void Player::seek(rcutils_time_point_value_t time_point)
+ {
++  ++control_changes_;
+   // Temporary stop playback in play_messages_from_queue() and block play_next()
+   std::lock_guard<std::mutex> main_play_loop_lk(skip_message_in_main_play_loop_mutex_);
+   skip_message_in_main_play_loop_ = true;
+@@ -424,7 +513,12 @@ void Player::load_storage_content()
+ 
+   while (rclcpp::ok()) {
+     TSAUniqueLock lk(reader_mutex_);
+-    if (!reader_->has_next()) {break;}
++    if (!reader_->has_next()) {
++      reader_eof_.store(true);
++      std::cerr << "ROSBAG_EVIDENCE_READER_EOF enqueued=" << enqueue_success_.load()
++                << " popped=" << pop_success_.load() << std::endl;
++      break;
++    }
+ 
+     if (message_queue_.size_approx() < queue_lower_boundary) {
+       enqueue_up_to_boundary(queue_upper_boundary);
+@@ -440,10 +534,22 @@ void Player::enqueue_up_to_boundary(size_t boundary)
+   rosbag2_storage::SerializedBagMessageSharedPtr message;
+   for (size_t i = message_queue_.size_approx(); i < boundary; i++) {
+     if (!reader_->has_next()) {
++      reader_eof_.store(true);
++      std::cerr << "ROSBAG_EVIDENCE_READER_EOF enqueued=" << enqueue_success_.load()
++                << " popped=" << pop_success_.load() << std::endl;
+       break;
+     }
++    if (test_read_failure_ && read_count_.load() >= 1) {
++      throw std::runtime_error("injected reader failure");
++    }
+     message = reader_->read_next();
+-    message_queue_.enqueue(message);
++    ++read_count_;
++    if (message_queue_.enqueue(message)) {
++      ++enqueue_success_;
++    } else {
++      ++enqueue_failure_;
++      record_error("queue enqueue failed");
++    }
+   }
+ }
+ 
+@@ -478,9 +584,19 @@ void Player::play_messages_from_queue()
+       }
+       publish_message(message_ptr);
+     }
+-    message_queue_.pop();
++    if (message_queue_.pop()) {
++      ++pop_success_;
++    } else {
++      ++pop_failure_;
++      record_error("queue pop failed");
++    }
+     message_ptr = peek_next_message_from_queue();
+   }
++  if (message_ptr == nullptr && rclcpp::ok() &&
++    reader_eof_.load() && reader_thread_finished_.load())
++  {
++    queue_drained_.store(true);
++  }
+   // while we're in pause state, make sure we don't return
+   // if we happen to be at the end of queue
+   while (is_paused() && rclcpp::ok()) {
+@@ -583,14 +699,24 @@ bool Player::publish_message(rosbag2_storage::SerializedBagMessageSharedPtr mess
+   auto publisher_iter = publishers_.find(message->topic_name);
+   if (publisher_iter != publishers_.end()) {
+     try {
++      if (test_publish_failure_) {
++        throw std::runtime_error("injected publish exception");
++      }
+       publisher_iter->second->publish(rclcpp::SerializedMessage(*message->serialized_data));
+       message_published = true;
+     } catch (const std::exception & e) {
++      record_error(std::string("publish: ") + e.what());
+       RCLCPP_ERROR_STREAM(
+         get_logger(), "Failed to publish message on '" << message->topic_name <<
+           "' topic. \nError: %s" << e.what());
+     }
+   }
++  if (message_published) {
++    ++publish_success_;
++  } else {
++    ++publish_failure_;
++    record_error("publish returned false: " + message->topic_name);
++  }
+   return message_published;
+ }
+ 
+diff --git a/rosbag2_transport/src/rosbag2_transport/verified_play.cpp b/rosbag2_transport/src/rosbag2_transport/verified_play.cpp
+new file mode 100644
+index 0000000..f3ffcb9
+--- /dev/null
++++ b/rosbag2_transport/src/rosbag2_transport/verified_play.cpp
+@@ -0,0 +1,232 @@
++#include <fcntl.h>
++#include <unistd.h>
++
++#include <chrono>
++#include <atomic>
++#include <cmath>
++#include <cstdlib>
++#include <exception>
++#include <iomanip>
++#include <iostream>
++#include <memory>
++#include <sstream>
++#include <stdexcept>
++#include <string>
++#include <thread>
++#include <vector>
++
++#include "rclcpp/rclcpp.hpp"
++#include "rosbag2_transport/player.hpp"
++#include "rosbag2_transport/reader_writer_factory.hpp"
++
++namespace
++{
++std::string quote(const std::string & value)
++{
++  std::ostringstream out;
++  out << '"';
++  for (unsigned char c : value) {
++    switch (c) {
++      case '"': out << "\\\""; break;
++      case '\\': out << "\\\\"; break;
++      case '\n': out << "\\n"; break;
++      case '\r': out << "\\r"; break;
++      case '\t': out << "\\t"; break;
++      default:
++        if (c < 0x20) {
++          out << "\\u" << std::hex << std::setw(4) << std::setfill('0')
++              << static_cast<unsigned int>(c) << std::dec;
++        } else {
++          out << static_cast<char>(c);
++        }
++    }
++  }
++  out << '"';
++  return out.str();
++}
++
++struct Args
++{
++  std::string bag;
++  std::string run_id;
++  std::string fingerprint;
++  std::string evidence_path;
++  double rate = 1.0;
++  double start_offset = 0.0;
++  std::vector<std::string> topics;
++};
++
++Args parse(int argc, char ** argv)
++{
++  Args result;
++  for (int i = 1; i < argc; ++i) {
++    const std::string key = argv[i];
++    if (key == "--loop" || key == "--seek" || key == "--start-paused") {
++      throw std::invalid_argument("unsupported playback control: " + key);
++    }
++    if (i + 1 >= argc) {
++      throw std::invalid_argument("missing value for " + key);
++    }
++    const std::string value = argv[++i];
++    if (key == "--bag") {result.bag = value;}
++    else if (key == "--run-id") {result.run_id = value;}
++    else if (key == "--fingerprint") {result.fingerprint = value;}
++    else if (key == "--evidence") {result.evidence_path = value;}
++    else if (key == "--topic") {result.topics.push_back(value);}
++    else if (key == "--rate") {result.rate = std::stod(value);}
++    else if (key == "--start-offset") {result.start_offset = std::stod(value);}
++    else {throw std::invalid_argument("unknown option: " + key);}
++  }
++  if (result.bag.empty() || result.run_id.empty() ||
++    result.fingerprint.empty() || result.evidence_path.empty() ||
++    !std::isfinite(result.rate) || result.rate <= 0.0 ||
++    !std::isfinite(result.start_offset) || result.start_offset < 0.0)
++  {
++    throw std::invalid_argument("missing or invalid required argument");
++  }
++  return result;
++}
++
++void write_exclusive(const std::string & path, const std::string & data)
++{
++  const int fd = open(path.c_str(), O_WRONLY | O_CREAT | O_EXCL, 0644);
++  if (fd < 0) {throw std::runtime_error("cannot create evidence file");}
++  const char * pointer = data.data();
++  size_t remaining = data.size();
++  while (remaining != 0) {
++    const ssize_t count = write(fd, pointer, remaining);
++    if (count <= 0) {
++      close(fd);
++      throw std::runtime_error("cannot write evidence file");
++    }
++    pointer += count;
++    remaining -= static_cast<size_t>(count);
++  }
++  if (fsync(fd) != 0) {
++    close(fd);
++    throw std::runtime_error("cannot sync evidence file");
++  }
++  close(fd);
++}
++
++std::string make_evidence(
++  const Args & args, const rosbag2_transport::PlaybackEvidence & state,
++  const std::string & outcome)
++{
++  std::ostringstream out;
++  out << "{\n\"schema_version\":1,\"run_id\":" << quote(args.run_id)
++      << ",\"bag_path\":" << quote(args.bag)
++      << ",\"bag_fingerprint\":" << quote(args.fingerprint)
++      << ",\"rate\":" << std::setprecision(17) << args.rate
++      << ",\"start_offset\":" << args.start_offset << ",\"loop\":false"
++      << ",\"topics\":[";
++  for (size_t i = 0; i < args.topics.size(); ++i) {
++    if (i != 0) {out << ',';}
++    out << quote(args.topics[i]);
++  }
++  out << "],\"reader_eof\":" << (state.reader_eof ? "true" : "false")
++      << ",\"reader_thread_finished\":" << (state.reader_thread_finished ? "true" : "false")
++      << ",\"queue_drained\":" << (state.queue_drained ? "true" : "false")
++      << ",\"interrupted\":" << (state.interrupted ? "true" : "false")
++      << ",\"runtime_error\":" << (state.runtime_error ? "true" : "false")
++      << ",\"read_count\":" << state.read_count
++      << ",\"enqueue_success\":" << state.enqueue_success
++      << ",\"enqueue_failure\":" << state.enqueue_failure
++      << ",\"pop_success\":" << state.pop_success
++      << ",\"pop_failure\":" << state.pop_failure
++      << ",\"publish_success\":" << state.publish_success
++      << ",\"publish_failure\":" << state.publish_failure
++      << ",\"control_changes\":" << state.control_changes
++      << ",\"errors\":[";
++  for (size_t i = 0; i < state.errors.size(); ++i) {
++    if (i != 0) {out << ',';}
++    out << quote(state.errors[i]);
++  }
++  out << "],\"internal_result\":" << quote(outcome) << "}\n";
++  return out.str();
++}
++}  // namespace
++
++int main(int argc, char ** argv)
++{
++  try {
++    const Args args = parse(argc, argv);
++    rclcpp::init(0, nullptr);
++    rosbag2_storage::StorageOptions storage;
++    storage.uri = args.bag;
++    rosbag2_transport::PlayOptions options;
++    options.rate = args.rate;
++    options.start_offset = static_cast<rcutils_time_point_value_t>(args.start_offset * 1e9);
++    options.topics_to_filter = args.topics;
++    options.disable_keyboard_controls = true;
++    options.loop = false;
++    auto reader = rosbag2_transport::ReaderWriterFactory::make_reader(storage);
++    auto player = std::make_shared<rosbag2_transport::Player>(
++      std::move(reader), storage, options, "verified_rosbag2_player");
++    const char * test_fault = std::getenv("ROSBAG_EVIDENCE_TEST_FAULT");
++    const bool race_interrupt = test_fault != nullptr &&
++      std::string(test_fault) == "race_interrupt";
++    std::atomic_bool stop_race_thread{false};
++    std::thread race_thread;
++    if (race_interrupt) {
++      race_thread = std::thread([&]() {
++        while (!stop_race_thread.load()) {
++          if (player->completion_evidence().reader_eof) {
++            player->mark_interrupted();
++            return;
++          }
++          std::this_thread::sleep_for(std::chrono::microseconds(100));
++        }
++      });
++    }
++    std::weak_ptr<rosbag2_transport::Player> weak_player = player;
++    rclcpp::on_shutdown([weak_player]() {
++      if (auto locked = weak_player.lock()) {locked->mark_interrupted();}
++    });
++    rclcpp::executors::SingleThreadedExecutor executor;
++    executor.add_node(player);
++    std::exception_ptr spin_error;
++    std::thread spin_thread([&]() {
++      try {executor.spin();}
++      catch (...) {spin_error = std::current_exception();}
++    });
++    std::string top_error;
++    try {player->play();}
++    catch (const std::exception & e) {top_error = e.what();}
++    catch (...) {top_error = "unknown playback exception";}
++    executor.cancel();
++    spin_thread.join();
++    stop_race_thread.store(true);
++    if (race_thread.joinable()) {race_thread.join();}
++    if (spin_error) {
++      try {std::rethrow_exception(spin_error);}
++      catch (const std::exception & e) {top_error += std::string(" executor: ") + e.what();}
++      catch (...) {top_error += " executor: unknown exception";}
++    }
++    const auto state = player->completion_evidence();
++    const bool counts_ok = state.read_count > 0 &&
++      state.read_count == state.enqueue_success &&
++      state.enqueue_success == state.pop_success &&
++      state.pop_success == state.publish_success &&
++      state.enqueue_failure == 0 && state.pop_failure == 0 &&
++      state.publish_failure == 0;
++    const std::string result =
++      state.interrupted ? "interrupted" :
++      (state.runtime_error || !top_error.empty()) ? "error" :
++      (state.reader_eof && state.reader_thread_finished && !state.queue_drained) ?
++      "reader_eof_queue_pending" :
++      (state.reader_eof && state.reader_thread_finished && state.queue_drained &&
++      counts_ok && state.control_changes == 0 && state.errors.empty() && rclcpp::ok()) ?
++      "natural_end" : "unknown";
++    auto output_state = state;
++    if (!top_error.empty()) {output_state.errors.push_back(top_error);}
++    write_exclusive(args.evidence_path, make_evidence(args, output_state, result));
++    std::cout << "ROSBAG_EVIDENCE_RESULT " << result << std::endl;
++    rclcpp::shutdown();
++    return result == "natural_end" ? 0 : 2;
++  } catch (const std::exception & e) {
++    std::cerr << "verified_play error: " << e.what() << std::endl;
++    if (rclcpp::ok()) {rclcpp::shutdown();}
++    return 3;
++  }
++}

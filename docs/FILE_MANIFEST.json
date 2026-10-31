@@ -1,0 +1,549 @@
+{
+  "schema_version": 1,
+  "source_branch": "optimize/mid360-baseline",
+  "source_head": "571696bfcf28b8531ef5a2d2ea153f59124f9b08",
+  "source_git_status_short": [
+    " M include/ikd-Tree/ikd_Tree.cpp",
+    " M include/ikd-Tree/ikd_Tree.h",
+    " M launch/mapping_mid360.launch.py",
+    " M src/laserMapping.cpp",
+    "?? include/ikd-Tree/ikd_Tree.cpp.before_nn_opt",
+    "?? include/ikd-Tree/ikd_Tree.cpp.before_search_threshold_opt",
+    "?? include/ikd-Tree/ikd_Tree.h.before_inline_heap_opt",
+    "?? include/ikd-Tree/ikd_Tree.h.before_nn_opt",
+    "?? include/ikd-Tree/ikd_Tree.h.before_search_threshold_opt",
+    "?? launch/mapping_mid360.launch.py.baseline-backup",
+    "?? tools/"
+  ],
+  "manifest_excludes_self": true,
+  "files": [
+    {
+      "path": ".gitignore",
+      "bytes": 133,
+      "sha256": "4584b07e516bc4be9d0335cc9ef41dad720695c903c15088ed272fbdc65ad5c8",
+      "source": ".gitignore",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": true
+    },
+    {
+      "path": "CMakeLists.txt",
+      "bytes": 2893,
+      "sha256": "589eb4b998f3676066ecf20c6ae9115c9a87bc88a231b2f03ff46f8a2f0094a7",
+      "source": "CMakeLists.txt",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "LICENSE",
+      "bytes": 18092,
+      "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+      "source": "LICENSE",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "README.md",
+      "bytes": 6112,
+      "sha256": "49b506d44cad00f073d540ba165ef7b853cfab2c505925c51b735bf900fce7fd",
+      "source": "README.md",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": true
+    },
+    {
+      "path": "config/avia.yaml",
+      "bytes": 3354,
+      "sha256": "4b872c22e92eafb143333b071db87dfe021f964ff2e4a7f62b6255405451e641",
+      "source": "config/avia.yaml",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "config/horizon.yaml",
+      "bytes": 3317,
+      "sha256": "4d88f344f906f8e00c0750c75da05569dd2e57f93088e76bf17087847c575c29",
+      "source": "config/horizon.yaml",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "config/mid360.yaml",
+      "bytes": 3392,
+      "sha256": "f5c8d2a92b212c86b434aeafae84311c772dbc31a955700b682a9c3e9c50f7b7",
+      "source": "config/mid360.yaml",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "config/ouster64.yaml",
+      "bytes": 3412,
+      "sha256": "d5679add6e77dd6e952ff269ed817d9457e20bb278ee0da2115c87a306c74ba8",
+      "source": "config/ouster64.yaml",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "config/unilidar_l1.yaml",
+      "bytes": 3522,
+      "sha256": "5c6c54f5824b8ca47749eb7c0d60e0717f581fb8c141827e5472b0e2b90eb162",
+      "source": "config/unilidar_l1.yaml",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "config/unilidar_l2.yaml",
+      "bytes": 3522,
+      "sha256": "5c6c54f5824b8ca47749eb7c0d60e0717f581fb8c141827e5472b0e2b90eb162",
+      "source": "config/unilidar_l2.yaml",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "config/velody16.yaml",
+      "bytes": 3692,
+      "sha256": "a960f4a7721bd431518ec993b4252cfe97b32077e13f3fac8cbfb5fa67aee610",
+      "source": "config/velody16.yaml",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "docs/LICENSE_AUDIT.md",
+      "bytes": 1373,
+      "sha256": "66ecf8515131d68c6eeac07ecb25ae7ccf498eea062df9347244f0e87e69c510",
+      "source": "candidate-generated",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": null
+    },
+    {
+      "path": "docs/OPTIMIZATION_NOTES.md",
+      "bytes": 9809,
+      "sha256": "7147e3a88b4522f4e8e9c6571aeffe6a212a7e0fb7cf2bdb0e4243b30f5f54a5",
+      "source": "candidate-generated",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": null
+    },
+    {
+      "path": "docs/RELEASE_SELECTION.md",
+      "bytes": 2882,
+      "sha256": "9e4f51d9dda30a00a399725f1202e70d2051e1e12168b7d447d5d8912b5912f6",
+      "source": "candidate-generated",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": null
+    },
+    {
+      "path": "docs/TEST_RESULTS.md",
+      "bytes": 2134,
+      "sha256": "f120e39562f94f756edd4b093b7959f29af6592fd81010ed504a0b1c9160b120",
+      "source": "candidate-generated",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": null
+    },
+    {
+      "path": "docs/UPSTREAM_README.md",
+      "bytes": 11917,
+      "sha256": "215def0827b82dc9ba54d7b1ce0b19b49b434bcb9a7bc648c0ec49bd62bbd17c",
+      "source": "README.md",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "docs/VALIDATION.md",
+      "bytes": 2467,
+      "sha256": "226435c89ffd690def1a391be26a713b9d23391c8cc513cf0181741f826ead77",
+      "source": "candidate-generated",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": null
+    },
+    {
+      "path": "include/FOV_Checker/FOV_Checker.cpp",
+      "bytes": 20758,
+      "sha256": "5ebbd98bdb4ad270bd0d84dba12fa98bfe58e919fe7accbe69cde6ec59f29a46",
+      "source": "include/FOV_Checker/FOV_Checker.cpp",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "include/FOV_Checker/FOV_Checker.h",
+      "bytes": 1119,
+      "sha256": "4cae4e3670211a8c85b5514c6198c5d3365897c9755172064ca60e071b79a0f4",
+      "source": "include/FOV_Checker/FOV_Checker.h",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "include/IKFoM/IKFoM_toolkit/esekfom/esekfom.hpp",
+      "bytes": 12264,
+      "sha256": "35e22592d3761c5fa837b1d94462835b26e5b5f49c3e291bfe93b8a54628612c",
+      "source": "include/IKFoM/IKFoM_toolkit/esekfom/esekfom.hpp",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "include/IKFoM/IKFoM_toolkit/esekfom/util.hpp",
+      "bytes": 2363,
+      "sha256": "3c4265d25ea3f8c7f586d1e34bc352e981e09e30555e42011cd23a0a147d6918",
+      "source": "include/IKFoM/IKFoM_toolkit/esekfom/util.hpp",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "include/IKFoM/IKFoM_toolkit/mtk/build_manifold.hpp",
+      "bytes": 10446,
+      "sha256": "fe018230140bfab649b7acdf43f2f063a64d2805a64b93438f22b676b7e23959",
+      "source": "include/IKFoM/IKFoM_toolkit/mtk/build_manifold.hpp",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "include/IKFoM/IKFoM_toolkit/mtk/src/SubManifold.hpp",
+      "bytes": 4886,
+      "sha256": "96709f0f453a0c8776b1969064275ebf14dc5234b7024e68eb1cfc51a513864f",
+      "source": "include/IKFoM/IKFoM_toolkit/mtk/src/SubManifold.hpp",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "include/IKFoM/IKFoM_toolkit/mtk/src/mtkmath.hpp",
+      "bytes": 10201,
+      "sha256": "d28e5f44f521ea7e953f35e8a974d8e4c8aa7e699c4339cb924f3efe91acbe49",
+      "source": "include/IKFoM/IKFoM_toolkit/mtk/src/mtkmath.hpp",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "include/IKFoM/IKFoM_toolkit/mtk/src/vectview.hpp",
+      "bytes": 6540,
+      "sha256": "7855408124ea65df4423bae5f97d5104af5552318796bc6324bdbf98a45101f3",
+      "source": "include/IKFoM/IKFoM_toolkit/mtk/src/vectview.hpp",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "include/IKFoM/IKFoM_toolkit/mtk/startIdx.hpp",
+      "bytes": 12515,
+      "sha256": "79cdc368bb4e083f5fda7549094c0aba8b599aee1f88e9f2a8b7fa785bf1f757",
+      "source": "include/IKFoM/IKFoM_toolkit/mtk/startIdx.hpp",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "include/IKFoM/IKFoM_toolkit/mtk/types/S2.hpp",
+      "bytes": 10022,
+      "sha256": "4501a540264d3c796f0357f9e0a515f4f4f5d2b9bbc0783754e867aa897f62b2",
+      "source": "include/IKFoM/IKFoM_toolkit/mtk/types/S2.hpp",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "include/IKFoM/IKFoM_toolkit/mtk/types/SEn.hpp",
+      "bytes": 11902,
+      "sha256": "a6ebb8b341db1a07fc588fcec40a1f2de4dae30366f208fa10e9532f1da79226",
+      "source": "include/IKFoM/IKFoM_toolkit/mtk/types/SEn.hpp",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "include/IKFoM/IKFoM_toolkit/mtk/types/SOn.hpp",
+      "bytes": 12343,
+      "sha256": "394aa660f0d9051d97fca57b1cbcea2bfa923634cc53675ee183349df71bd2a2",
+      "source": "include/IKFoM/IKFoM_toolkit/mtk/types/SOn.hpp",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "include/IKFoM/IKFoM_toolkit/mtk/types/vect.hpp",
+      "bytes": 15801,
+      "sha256": "5bb37a64384334de1bc339519580b5a6b33af6451e0ec98964ffadbebd9e4f5f",
+      "source": "include/IKFoM/IKFoM_toolkit/mtk/types/vect.hpp",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "include/IKFoM/IKFoM_toolkit/mtk/types/wrapped_cv_mat.hpp",
+      "bytes": 3236,
+      "sha256": "3040f43fcb4195a2572a8819be012ebd2c4b59a38cfae86fcac3e01d7039a589",
+      "source": "include/IKFoM/IKFoM_toolkit/mtk/types/wrapped_cv_mat.hpp",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "include/IKFoM/LICENSE",
+      "bytes": 18092,
+      "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+      "source": "include/IKFoM/LICENSE",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "include/IKFoM/README.md",
+      "bytes": 35785,
+      "sha256": "69f46f94d72f19eb1ddeb50f2515fbc3654720e12d127df6f1bfe9545f4e8e0d",
+      "source": "include/IKFoM/README.md",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "include/common_lib.h",
+      "bytes": 5307,
+      "sha256": "37f63824a51ec74594d873ea9e509157df08e5e68550978e9c6627f0a63aa082",
+      "source": "include/common_lib.h",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "include/ikd-Tree/README.md",
+      "bytes": 73,
+      "sha256": "a7f6feab008dc54a053963fb518e360389ee807af63ebddcc15e90b1ede78073",
+      "source": "include/ikd-Tree/README.md",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "include/ikd-Tree/ikd_Tree.cpp",
+      "bytes": 68944,
+      "sha256": "a29aa9a0203b4462f318b6734ab88a46a2e01b12ab6599a18b4df7df2187bea2",
+      "source": "include/ikd-Tree/ikd_Tree.cpp",
+      "source_uncommitted": true,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "include/ikd-Tree/ikd_Tree.h",
+      "bytes": 10903,
+      "sha256": "d58f68ac06348374688b38b720ed95d017d633d3769402174649cf80d5652f98",
+      "source": "include/ikd-Tree/ikd_Tree.h",
+      "source_uncommitted": true,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "include/so3_math.h",
+      "bytes": 2964,
+      "sha256": "59f15756e7b6a06c2a093b794d4e70e6e726243605c7bcfa46806a7decf91c63",
+      "source": "include/so3_math.h",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "launch/correct_odom_unilidar_l1.launch.py",
+      "bytes": 1746,
+      "sha256": "943bd3036ee0593a91473409e78a35baa5cacea72fae0709e2767219460c2a91",
+      "source": "launch/correct_odom_unilidar_l1.launch.py",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "launch/correct_odom_unilidar_l2.launch.py",
+      "bytes": 1746,
+      "sha256": "1183800c987551e13451e3709b442d0daa18c8c1f34fff904b83fc4129477d8e",
+      "source": "launch/correct_odom_unilidar_l2.launch.py",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "launch/gdb_debug_example.launch.py",
+      "bytes": 2226,
+      "sha256": "d95ccb9f7fc25015d0760005528e308727c7fe5e495e99ed97c2bb15769923b2",
+      "source": "launch/gdb_debug_example.launch.py",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "launch/mapping_avia.launch.py",
+      "bytes": 2213,
+      "sha256": "024543f9ae45d7fbfe11e0a048064627e400a8806d6650a003f34f9f3de8a5e6",
+      "source": "launch/mapping_avia.launch.py",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "launch/mapping_horizon.launch.py",
+      "bytes": 2215,
+      "sha256": "447f6b64a00b4ef0018e46a1f2726a3aabc1053a823a3ec5458bd089c00b2822",
+      "source": "launch/mapping_horizon.launch.py",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "launch/mapping_mid360.launch.py",
+      "bytes": 2213,
+      "sha256": "8847fc2f79c833c10e21bb01cb8a1a8f7f0edbb9bcecd06e04660f47516830cc",
+      "source": "launch/mapping_mid360.launch.py",
+      "source_uncommitted": true,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "launch/mapping_ouster64.launch.py",
+      "bytes": 2236,
+      "sha256": "2ed04f1635d82a858219cde76f60d45223d66a737de6118394ddd75d4fbdfd85",
+      "source": "launch/mapping_ouster64.launch.py",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "launch/mapping_unilidar_l1.launch.py",
+      "bytes": 2219,
+      "sha256": "182ab522d5da7fd927ae6657534b0d992b6d2cf6bc1c0d2c60edeabe061f60d7",
+      "source": "launch/mapping_unilidar_l1.launch.py",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "launch/mapping_unilidar_l2.launch.py",
+      "bytes": 2219,
+      "sha256": "40d69bdd12cdceeb9e9f923e73236c9d17b8884cc3b566ffac88666760f8f6f5",
+      "source": "launch/mapping_unilidar_l2.launch.py",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "launch/mapping_velody16.launch.py",
+      "bytes": 2236,
+      "sha256": "73ba38a215907ae4c99234e1556baeb309458e3c752cdaa4284c49eba2927623",
+      "source": "launch/mapping_velody16.launch.py",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "package.xml",
+      "bytes": 1545,
+      "sha256": "3a48c7861879db8fc27566ac702af2450fd475cf5696090bb36d6859bfd0d690",
+      "source": "package.xml",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "rviz_cfg/loam_livox.rviz",
+      "bytes": 9853,
+      "sha256": "99f67a529c0365a823163869fb61e0da47d197d7711f0ce3c27e9c8e137ecd17",
+      "source": "rviz_cfg/loam_livox.rviz",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "src/Estimator.cpp",
+      "bytes": 16020,
+      "sha256": "27f0ee760e1232dd278dcf167ef503f6b06a0835c53f68741128f67694700b14",
+      "source": "src/Estimator.cpp",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "src/Estimator.h",
+      "bytes": 3270,
+      "sha256": "a7c06fd016a1f3e29609c6d5cc7a3f345c5d6bbdbd1cf00f0b0e692087ba400b",
+      "source": "src/Estimator.h",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "src/IMU_Processing.hpp",
+      "bytes": 4942,
+      "sha256": "e251bd59bcdf381a2df537742fd3303d24fd9b075e7bfa80475fe825fec04c5c",
+      "source": "src/IMU_Processing.hpp",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "src/laserMapping.cpp",
+      "bytes": 60315,
+      "sha256": "b0a07ace1bacb2f3f552f49ac0929a00f33e3be5ab3123f96abab72da66c7dbb",
+      "source": "src/laserMapping.cpp",
+      "source_uncommitted": true,
+      "changed_relative_to_source_worktree": true
+    },
+    {
+      "path": "src/parameters.cpp",
+      "bytes": 8610,
+      "sha256": "33654c2b1a76a99fb4b71ad41a7c6f93f2fe7a914ee0f0c2d481872d3adb2297",
+      "source": "src/parameters.cpp",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "src/parameters.h",
+      "bytes": 1609,
+      "sha256": "0dd3f72c302390b72d03efe235339b8798e2b8c79b17c2514c9cfccb26f25f03",
+      "source": "src/parameters.h",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "src/preprocess.cpp",
+      "bytes": 25045,
+      "sha256": "52b9ec35eb90a329f9691490a53450173a1c1b66a082bb906da3820e0c9d479e",
+      "source": "src/preprocess.cpp",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "src/preprocess.h",
+      "bytes": 6674,
+      "sha256": "697adfb286374d11db771a2e78e68fd81a9b61febdd532cdec368626feca9d6b",
+      "source": "src/preprocess.h",
+      "source_uncommitted": false,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "tools/analyze_node_log.py",
+      "bytes": 6890,
+      "sha256": "5dd8bd0b6026cc485f4b5d7fdebe52d49bb988bf8c5bb43d2d45021b8e553e0d",
+      "source": "tools/analyze_node_log.py",
+      "source_uncommitted": true,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "tools/rosbag_completion_ws/LICENSE",
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "source": "tools/rosbag_completion_ws/src/rosbag2_complete/LICENSE",
+      "source_uncommitted": true,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "tools/rosbag_completion_ws/NOTICE",
+      "bytes": 138,
+      "sha256": "ba067a110eb7557729e9e2ad5d3be5eb0a1758471f2ffee0557a99c5073770ef",
+      "source": "tools/rosbag_completion_ws/src/rosbag2_complete/NOTICE",
+      "source_uncommitted": true,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "tools/rosbag_completion_ws/README.md",
+      "bytes": 2112,
+      "sha256": "36e51d45ba8dc12e3d23429e06b7dfa67b3d5e3ac6c7238f2e7c7106778ede35",
+      "source": "tools/rosbag_completion_ws/README.md",
+      "source_uncommitted": true,
+      "changed_relative_to_source_worktree": true
+    },
+    {
+      "path": "tools/rosbag_completion_ws/rosbag2_transport_evidence.patch",
+      "bytes": 21571,
+      "sha256": "ea711194ed560bf98edf3b8d015bbef3e397dd18514df80d12ca807af6cb125e",
+      "source": "candidate-generated",
+      "source_uncommitted": true,
+      "changed_relative_to_source_worktree": null
+    },
+    {
+      "path": "tools/rosbag_completion_ws/supervisor.py",
+      "bytes": 11904,
+      "sha256": "caf1a996163e99b4a0f2856b833a121badadacfaf5f8320740d3abc0a06e1021",
+      "source": "tools/rosbag_completion_ws/supervisor.py",
+      "source_uncommitted": true,
+      "changed_relative_to_source_worktree": false
+    },
+    {
+      "path": "tools/rosbag_completion_ws/test_completion.py",
+      "bytes": 10756,
+      "sha256": "89c97c183a596f6f5788b402b1e91e4b541c5fb28897b6eb2d26d1c24cec3dc9",
+      "source": "tools/rosbag_completion_ws/test_completion.py",
+      "source_uncommitted": true,
+      "changed_relative_to_source_worktree": true
+    },
+    {
+      "path": "tools/test_analyze_node_log.py",
+      "bytes": 4059,
+      "sha256": "8425dbce1200796bfcd19727119543843b5e4b1bd9710e5c0195819b31d453f6",
+      "source": "tools/test_analyze_node_log.py",
+      "source_uncommitted": true,
+      "changed_relative_to_source_worktree": false
+    }
+  ]
+}

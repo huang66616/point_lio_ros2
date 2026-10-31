@@ -1,4 +1,14 @@
-/.idea/
-/cmake-build-debug/
+/build/
+/install/
+/log/
+/Log/
+/PCD/
+/results/
+/test_artifacts/
+**/__pycache__/
+*.pyc
 *.pcd
-/Log/pos_log.csv
+*.db3
+*.mcap
+*.before_*
+*.baseline-backup

@@ -425,9 +425,10 @@ void KD_TREE<PointType>::Build(PointVector point_cloud)
 template <typename PointType>
 void KD_TREE<PointType>::Nearest_Search(PointType point, int k_nearest, PointVector &Nearest_Points, vector<float> &Point_Distance, float max_dist)
 {
-    MANUAL_HEAP q(2 * k_nearest);
+    MANUAL_HEAP q(k_nearest);
     q.clear();
-    vector<float>().swap(Point_Distance);
+    Point_Distance.clear();
+
     if (Rebuild_Ptr == nullptr || *Rebuild_Ptr != Root_Node)
     {
         Search(Root_Node, k_nearest, point, q, max_dist);
@@ -448,15 +449,25 @@ void KD_TREE<PointType>::Nearest_Search(PointType point, int k_nearest, PointVec
         search_mutex_counter -= 1;
         pthread_mutex_unlock(&search_flag_mutex);
     }
+
     int k_found = min(k_nearest, int(q.size()));
-    PointVector().swap(Nearest_Points);
-    vector<float>().swap(Point_Distance);
+
+    // Reuse output-buffer capacity across nearest-neighbor queries.
+    Nearest_Points.clear();
+    Nearest_Points.reserve(k_found);
+    Point_Distance.reserve(k_found);
+
+    // Preserve the original ordering: nearest point first.
     for (int i = 0; i < k_found; i++)
     {
-        Nearest_Points.insert(Nearest_Points.begin(), q.top().point);
-        Point_Distance.insert(Point_Distance.begin(), q.top().dist);
+        Nearest_Points.push_back(q.top().point);
+        Point_Distance.push_back(q.top().dist);
         q.pop();
     }
+
+    std::reverse(Nearest_Points.begin(), Nearest_Points.end());
+    std::reverse(Point_Distance.begin(), Point_Distance.end());
+
     return;
 }
 
@@ -497,7 +508,7 @@ int KD_TREE<PointType>::Add_Points(PointVector &PointToAdd, bool downsample_on)
             mid_point.x = Box_of_Point.vertex_min[0] + (Box_of_Point.vertex_max[0] - Box_of_Point.vertex_min[0]) / 2.0;
             mid_point.y = Box_of_Point.vertex_min[1] + (Box_of_Point.vertex_max[1] - Box_of_Point.vertex_min[1]) / 2.0;
             mid_point.z = Box_of_Point.vertex_min[2] + (Box_of_Point.vertex_max[2] - Box_of_Point.vertex_min[2]) / 2.0;
-            PointVector().swap(Downsample_Storage);
+            Downsample_Storage.clear();
             Search_by_range(Root_Node, Box_of_Point, Downsample_Storage);
             min_dist = calc_dist(PointToAdd[i], mid_point);
             downsample_result = PointToAdd[i];

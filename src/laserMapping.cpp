@@ -4,6 +4,8 @@
 #include <thread>
 #include <fstream>
 #include <csignal>
+#include <cstdlib>
+#include <sys/stat.h>
 #include <Python.h>
 #include <so3_math.h>
 #include <rclcpp/rclcpp.hpp>
@@ -35,7 +37,9 @@ const float MOV_THRESHOLD = 1.5f;
 mutex mtx_buffer;
 condition_variable sig_buffer;
 
-string root_dir = ROOT_DIR;
+// A unique directory per process prevents an ordinary launch from replacing
+// source-tree logs or files left by an earlier run.
+string runtime_dir;
 
 int feats_down_size = 0, time_log_counter = 0, scan_count = 0, publish_count = 0;
 
@@ -147,7 +151,7 @@ BoxPointType LocalMap_Points;
 bool Localmap_Initialized = false;
 
 void lasermap_fov_segment() {
-    cub_needrm.shrink_to_fit();
+    cub_needrm.clear();
 
     V3D pos_LiD;
     if (use_imu_as_input) {
@@ -565,7 +569,7 @@ void publish_frame_world(const rclcpp::Publisher<sensor_msgs::msg::PointCloud2>:
         scan_wait_num++;
         if (pcl_wait_save->size() > 0 && pcd_save_interval > 0 && scan_wait_num >= pcd_save_interval) {
             pcd_index++;
-            string all_points_dir(string(string(ROOT_DIR) + "PCD/scans_") + to_string(pcd_index) + string(".pcd"));
+            string all_points_dir(runtime_dir + "/PCD/scans_" + to_string(pcd_index) + ".pcd");
             pcl::PCDWriter pcd_writer;
             cout << "current scan saved to /PCD/" << all_points_dir << endl;
             pcd_writer.writeBinary(all_points_dir, *pcl_wait_save);
@@ -761,16 +765,31 @@ int main(int argc, char **argv) {
     Eigen::Matrix<double, 30, 30> Q_output = process_noise_cov_output();
     /*** debug record ***/
     FILE *fp;
-    string pos_log_dir = root_dir + "/Log/pos_log.txt";
+    const char *root_env = std::getenv("POINTLIO_RUN_ROOT");
+    const string run_root = (root_env && *root_env) ? root_env : "/tmp";
+    string run_template = run_root + "/pointlio-XXXXXX";
+    char *created_dir = ::mkdtemp(&run_template[0]);
+    if (created_dir == nullptr) {
+        std::cerr << "Cannot create Point-LIO run directory under " << run_root << std::endl;
+        return 1;
+    }
+    runtime_dir = created_dir;
+    if (::mkdir((runtime_dir + "/PCD").c_str(), 0700) != 0) {
+        std::cerr << "Cannot create PCD directory under " << runtime_dir << std::endl;
+        return 1;
+    }
+    const string pos_log_dir = runtime_dir + "/pos_log.txt";
     fp = fopen(pos_log_dir.c_str(), "w");
 
     ofstream fout_out, fout_imu_pbp;
-    fout_out.open(DEBUG_FILE_DIR("mat_out.txt"), ios::out);
-    fout_imu_pbp.open(DEBUG_FILE_DIR("imu_pbp.txt"), ios::out);
-    if (fout_out && fout_imu_pbp)
-        cout << "~~~~" << ROOT_DIR << " file opened" << endl;
-    else
-        cout << "~~~~" << ROOT_DIR << " doesn't exist" << endl;
+    fout_out.open(runtime_dir + "/mat_out.txt", ios::out);
+    fout_imu_pbp.open(runtime_dir + "/imu_pbp.txt", ios::out);
+    if (fp == nullptr || !fout_out || !fout_imu_pbp) {
+        std::cerr << "Cannot open Point-LIO logs under " << runtime_dir << std::endl;
+        if (fp != nullptr) fclose(fp);
+        return 1;
+    }
+    cout << "Point-LIO run files: " << runtime_dir << endl;
 
     /*** ROS subscribe initialization ***/
     rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr sub_pcl;
@@ -1311,7 +1330,7 @@ int main(int argc, char **argv) {
        2. noted that pcd save will influence the real-time performences **/
     if (pcl_wait_save->size() > 0 && pcd_save_en) {
         string file_name = string("scans.pcd");
-        string all_points_dir(string(string(ROOT_DIR) + "PCD/") + file_name);
+        string all_points_dir(runtime_dir + "/PCD/" + file_name);
         pcl::PCDWriter pcd_writer;
         pcd_writer.writeBinary(all_points_dir, *pcl_wait_save);
     }
